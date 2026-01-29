@@ -66,16 +66,11 @@
    After the image is pushed, we update Kubernetes manifests or Helm charts with the new image tag.
    These manifests are stored in a Git repository (same repo or a separate deployment repo).
    We use a GitOps tool like Argo CD.
-
    Argo CD continuously watches the manifest/Helm repo.
-
    When a new commit is detected, it automatically syncs and deploys the changes to the Kubernetes cluster.
-
-  Git remains the single source of truth, and Argo CD ensures continuous reconciliation.
-
-  (If GitOps is not used)
-
-  Deployment can also be done via kubectl/Helm commands using shell scripts, Ansible, or Python from Jenkins.
+   Git remains the single source of truth, and Argo CD ensures continuous reconciliation.
+   (If GitOps is not used)
+   Deployment can also be done via kubectl/Helm commands using shell scripts, Ansible, or Python from Jenkins.
 
 5. Suddenly your build stage has stopped, what would you do?
    “When a build stage stops suddenly, I first check the pipeline logs to identify the exact step and error message.
@@ -88,4 +83,111 @@
    I fixed it by pinning the dependency version, re-ran the pipeline, and confirmed the build succeeded.
    After that, we improved dependency management and caching to avoid similar issues.”
 
+6. How to check open ports?
+   “I use ss -tulnp to see all listening TCP/UDP ports along with the process using them. It helps identify which service is bound to which port.”
+
+7. What is hard link and soft link?
+   “A hard link points to the same inode so it still works if the original file is deleted."
+   “A soft link is like a shortcut that lets applications access files from a fixed path even if the real file lives somewhere else.”
+   ln -s /etc/nginx/sites-available/app.conf /etc/nginx/sites-enabled/app.conf
+
+
+9. What is cherry picking?
+   “Cherry-pick is used to apply a specific commit from one branch to another, usually for moving a hotfix without merging the full branch.”
+   git cherry-pick <commit_id>
+
+10. WHat is WebHook in CICD?
+    “A webhook is used to notify the CI/CD system when a code change happens, like a Git push.
+    It automatically triggers the pipeline to build, test, and deploy the application.”
    
+11. What branching strategy do you follow, and how do you handle merges to avoid breaking the release branch? If a bug appears in production, what’s your approach to resolving it?
+    --Typical flow:
+    Developers work on feature/* branches
+    They raise PRs into develops
+    After testing, develop is merged into main for release
+    --To protect production:
+    main is read-only
+    Only PRs from develop or hotfix are allowed
+    CI must pass before merge
+    --If a prod bug happens:
+    Create hotfix/bug-123 from main
+    Fix the bug
+    Merge into main
+    cherry-pick the same commit into develop
+    This keeps prod fixed without breaking ongoing work.
+
+12. Image scanning in CICD
+    “Trivy doesn’t just scan the image tag — it extracts every layer, reads OS packages and application dependencies,
+    and compares them against CVE databases, so we catch vulnerable libraries before deployment.”
+    trivy image myapp:1.0
+    trivy scan four types of scanning inside the docker image
+    | Layer         | What it checks              |
+    | ------------- | --------------------------- |
+    | OS packages   | apt, apk, yum packages      |
+    | App libraries | npm, pip, maven, etc        |
+    | Config files  | Dockerfile, Kubernetes YAML |
+    | Secrets       | hardcoded passwords, tokens |
+    Compares all versions against vulnerability DB (NVD, GitHub, RedHat CVEs)
+    trivy image --exit-code 1 --severity CRITICAL,HIGH myapp:1.0 ---- [pipeline code]
+    Kubernetes YAML Scanning
+    --[Code] trivy config deployment.yaml
+    --It checks:
+    Privileged container
+    Running as root
+    No resource limits
+    Open ports
+    This prevents bad Kubernetes security before deployment.
+
+13. Difference between Github hosted runners and self-hosted runners?
+    --Github hosted runners
+    No setup needed
+    Fresh VM for every job
+    Has preinstalled tools (Docker, Node, Java, etc)
+    Deleted after the job finishes
+    When to use this? when you want quick setup, clean environments, and standard builds
+
+    --self-hosted runners
+    Full control of OS and tools
+    Persistent environment
+    Can access private networks
+    Can run custom software
+
+14. How rollbacks are done?
+    --In CICD, we 
+    Tag Docker images with build ID
+    Store them in ACR
+    Deploy via Helm
+
+    every helm deployment created a release, to check the release history
+    helm history <image>
+    helm rollback <image> <revision_no.>
+
+    helm rollback <image> --this rollback to the previous revision.
+
+15. What checks do you include before allowing a deployment to production?
+    “We allow production deployment only after passing automated tests, security scans, quality gates,
+    artifact validation, and manual approval, followed by health checks and rollback protection.”
+
+16. Explain SonarQube in detail?
+    SonarQube is a Static Application Security Testing (SAST) and code quality platform.
+    It analyses source code before it is compiled without running the application to find bugs, security vulnerabilities, bad coding practises.
+    How SonarQube detects vulnerabilities:
+    --it uses
+    OWASP Top 10--Top 10 most dangerous web application vulnerabilities.
+    CWE standards--It is a huge list of coding mistakes that cause security issues.
+    Secure code rules
+    --So it detects
+    Hardcoded passwords
+    Unsafe encryption
+    Broken auth
+    Command injection
+    Secrets in code
+    “OWASP defines the top security risks in applications, and CWE classifies the exact coding mistakes that lead to those risks — SonarQube uses both to detect vulnerabilities in code.”
+
+    Sonar quality gate checks
+    No critical bugs
+    No security vulnerabilities
+    Coverage > 80%
+    Duplications < 3%
+
+    
