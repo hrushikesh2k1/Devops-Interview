@@ -1,6 +1,11 @@
 Is this the new role or replacement role?
+
 When i am successful in this interview what is my focus going to be for first 90 days
 How do you measure performace of the team over 6 months 
+
+If I am successfull in the interview, what would be my focus for first 90 days?
+
+What do you like working in this company?
 
 1. How do you troubleshoot Azure VM backup issues including restarting a failed backup.
    Points to check:
