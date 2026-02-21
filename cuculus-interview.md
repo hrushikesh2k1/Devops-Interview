@@ -1,18 +1,15 @@
 1. Suddenly a severe incident raised. What is your action for First 15min?
 
-   Minutes 0–2: Acknowledge and Assess
-  "First thing — I acknowledge the alert immediately so the team knows someone is on it.
-   Then I quickly assess: What's the blast radius? Is this affecting all users or a subset?
-   Is it a full outage or degraded performance? I check dashboards — in my environment that would be Prometheus and Grafana —
-   to understand error rates, latency spikes, and which services are affected.
-   I also check if any recent deployment happened in the last hour by looking at GitHub Actions pipeline logs or Kubernetes rollout history."
+   I would immediately acknowledge the incident and will work on collecting  .         information about the issue.
+   I would check the pod health by kubectl describe to check for the errors            (crashLoopBackOff, OOMKilled, Readiness/Liveness probe failure, Recent pod          restarts, service endpoints, Node pressure using Kubectl top node, Any HPA          scaling issues, Ingress errors or 5xx error, check for recent rollouts using        kubectl rollout undo deployment).
+   By checking all of these I will collect the all possible information and            primarily decide is this infra issue, application issue, networking issue or        capacity issue?
 
-  Minutes 2–5: Declare the Incident Early
+   Minutes 2–5: Declare the Incident Early
   "One of the biggest mistakes teams make is waiting too long to declare an incident. 
-  I would declare it early — even if I'm not 100% sure of the severity. 
-  This gets the right people looped in faster. I've read about cases where teams delayed declaration and spent hours debugging in silos, 
-  which slowed resolution significantly. Early declaration means: open a dedicated Slack channel or war room, assign an Incident Commander 
-  (or take that role temporarily), and notify stakeholders."
+   I would declare it early — even if I'm not 100% sure of the severity. 
+   This gets the right people looped in faster. I've read about cases where teams delayed declaration and spent hours debugging in silos, 
+   which slowed resolution significantly. Early declaration means: open a dedicated Slack channel or war room, assign an Incident Commander 
+   (or take that role temporarily), and notify stakeholders."
 
   Minutes 5–10: Communicate and Escalate
   "I'd post a quick initial message to the incident channel: 'Production incident declared. Symptom: [X]. 
@@ -35,10 +32,16 @@
 
 2. What security measures you have taken for infrastructure provisioning like to control drift?
 
-   a) Statefile stored in Azure Blob Storage, provides native state locking preventing conflicting changes.
-   b) All terraform changes go through GitHub Actions with mandatory PR check at terraform plan- direct CLI apply on prod is blocked via Azure RBAC (only the pipeline service principal has contributor access).
+   a) Statefile stored in Azure Blob Storage, provides native state locking               preventing conflicting changes.
+   b) All terraform changes go through GitHub Actions with mandatory PR check at          terraform plan- direct CLI apply on prod is blocked via Azure RBAC (only the        pipeline service principal has contributor access).
    c) Schedule drift detection pipeline
    ```bash
+      schedule * */6 * * *
+      terraform plan -detailed-exitcode
+
+      0- no drfit
+      1-
+      2- 
    ```
    d) Implemented Azure policy for continuous complaince.
      "All VMs must use approved VM sizes only".
@@ -51,9 +54,9 @@
      "Allowed VM sku's"
      "Public IP restriction, VM should not be associated with public IP's"
 
-   e) Even after the resources are deployed, OS configuration can drift. This          can be handled by Azure machine configuration service. We will define the        desired OS state in azure machine configuration file.
-     Azure automation pulls this config onto every registered VM every 15-30         min. if someone manually uninstalls IIS or modifies the config file, AMC         remediates it on the next pull cycle.
-     f) GitOps with ArgoCD on AKS for kubernetes drift. ArgoCD deployed on AKS monitors your GitHub repos as the source of truth. With auto-sync enabled, every 3 minutes, argocd compares live AKS cluster state. If someone runs kubectl apply manually or edits anything directly, ArgoCD reconciles back to Git state automatically.
+   e) Even after the resources are deployed, OS configuration can drift. This             can be handled by Azure machine configuration service. We will define the           desired OS state in azure machine configuration file.
+      Azure automation pulls this config onto every registered VM every 15-30             min. if someone manually uninstalls IIS or modifies the config file, AMC            remediates it on the next pull cycle.
+   f) GitOps with ArgoCD on AKS for kubernetes drift. ArgoCD deployed on AKS              monitors your GitHub repos as the source of truth. With auto-sync enabled,          every 3 minutes, argocd compares live AKS cluster state. If someone runs            kubectl apply manually or edits anything directly, ArgoCD reconciles back to        Git state automatically.
    ```yaml
     # ArgoCD Application manifest
     apiVersion: argoproj.io/v1alpha1
@@ -76,22 +79,21 @@
 
 g) Azure Monitor + Activity Log Alerts for Rogue Changes
 
-- **Azure Activity Log** records every single change made to any Azure resource — who did it, when, from where
-- Set up **Azure Monitor Alert Rules** on the Activity Log:
-  - *"Alert me if any resource is modified outside of the pipeline service principal"*
+  - **Azure Activity Log** records every single change made to any Azure resource —     who did it, when, from where
+  - Set up **Azure Monitor Alert Rules** on the Activity Log:
+  - *"Alert me if any resource is modified outside of the pipeline service              principal"*
   - *"Alert if any NSG rule is added manually via portal"*
-- Alerts sent to **Microsoft Teams channel or email** via Action Groups
-- Integrate with **Azure Sentinel (Microsoft Defender for Cloud)** for security-level drift monitoring
+  - Alerts sent to **Microsoft Teams channel or email** via Action Groups
+  - Integrate with **Azure Sentinel (Microsoft Defender for Cloud)** for security-      level drift monitoring
 
 h) Enforce "No Manual Changes" via Azure RBAC
 
 The organizational guardrail that prevents drift at the source:
 
-- **Production subscription:** Only the **pipeline service principal** has `Contributor` role
-- All humans get `Reader` role on production — they can see but not touch
-- Developers work on **dev/staging subscriptions** with full access
-- All production changes **must go through Azure DevOps Pipeline** — this is enforced by RBAC, not just policy
-- 
+  - **Production subscription:** Only the **pipeline service principal** has            Contributor` role
+  - All humans get `Reader` role on production — they can see but not touch
+  - Developers work on **dev/staging subscriptions** with full access
+  - All production changes **must go through Azure DevOps Pipeline** — this is          enforced by RBAC, not just policy
 
 ### The Full Drift Protection Architecture on Azure
 ```
@@ -114,24 +116,13 @@ Drift Report → Teams Alert + ADO Work Item
 
 
 3. What monitoring tools you have used, how do you implemented alerting?
-
-# Monitoring & Alerting — Deep Technical Answer
-
----
-
 ## How to Open Your Answer
-
-Don't just say *"I used Azure Monitor and Prometheus."* Open with the **strategy first:**
-
 > *"Our monitoring strategy was layered — we used **Prometheus + Grafana** for Kubernetes-level and application-level observability, and **Azure Monitor** for infrastructure-level and platform-level monitoring across VMs, VMSS, and managed databases. Alerting was not just email notifications — we built a full alerting pipeline with severity classification, routing, and auto-remediation."*
 ---
 
 ## Layer 1 — Kubernetes Monitoring with Prometheus + Grafana (AKS)
 
 ### How Prometheus Was Deployed
-
-Not just *"we installed Prometheus"* — explain **how:**
-
 ```bash
 # Deployed via Helm using kube-prometheus-stack
 # This installs Prometheus, Alertmanager, Grafana, and all default K8s exporters in one shot
@@ -151,7 +142,6 @@ The `kube-prometheus-stack` automatically deploys:
 - **Grafana** — visualization
 
 ### What Metrics Were Scraped
-
 Prometheus works on a **pull model** — it scrapes `/metrics` endpoints at defined intervals:
 
 ```yaml
@@ -265,9 +255,7 @@ receivers:
         channel: '#backend-alerts'
         text: '{{ .CommonAnnotations.summary }}'
 ```
-
 > *"We used Alertmanager routing trees to ensure critical alerts went to PagerDuty for on-call engineers, warnings went to Microsoft Teams, and team-specific alerts were routed to the relevant Slack channel — so the right people got the right alerts."*
-
 ---
 
 ## Layer 2 — Azure Monitor for VMs, VMSS, and Databases
