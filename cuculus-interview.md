@@ -1,20 +1,21 @@
 1. Suddenly a severe incident raised. What is your action for First 15min?
 
-   I would immediately acknowledge the incident and will work on collecting  .         information about the issue.
-   I would check the pod health by kubectl describe to check for the errors            (crashLoopBackOff, OOMKilled, Readiness/Liveness probe failure, Recent pod          restarts, service endpoints, Node pressure using Kubectl top node, Any HPA          scaling issues, Ingress errors or 5xx error, check for recent rollouts using        kubectl rollout undo deployment).
-   By checking all of these I will collect the all possible information and            primarily decide is this infra issue, application issue, networking issue or        capacity issue?
+   I would immediately acknowledge the incident and will work on collecting information about the issue.
+   I would check the pod health by kubectl describe to check for the errors (crashLoopBackOff, OOMKilled, Readiness/Liveness probe failure, Recent pod restarts,
+   service endpoints, Node pressure using Kubectl top node, Any HPA scaling issues, Ingress errors or 5xx error, check for recent rollouts using kubectl rollout undo deployment).
+   By checking all of these I will collect the all possible information and primarily decide, is this infra issue, application issue, networking issue or capacity issue?
 
-   Minutes 2–5: Declare the Incident Early
-  "One of the biggest mistakes teams make is waiting too long to declare an incident. 
+   Minutes 2–5: Declare the Incident Early 
    I would declare it early — even if I'm not 100% sure of the severity. 
-   This gets the right people looped in faster. I've read about cases where teams delayed declaration and spent hours debugging in silos, 
-   which slowed resolution significantly. Early declaration means: open a dedicated Slack channel or war room, assign an Incident Commander 
+   This gets the right people looped in faster.I will open a dedicated Slack channel or war room, assign an Incident Commander 
    (or take that role temporarily), and notify stakeholders."
 
   Minutes 5–10: Communicate and Escalate
   "I'd post a quick initial message to the incident channel: 'Production incident declared. Symptom: [X]. 
-  Impact: [Y users/services]. Currently investigating. Next update in 10 minutes.' Then I'd escalate based on what I'm seeing. 
-  If it's a Kubernetes cluster issue, I'm paging the platform team. If it's an identity/auth failure, I'm pulling in the IAM team. 
+  Impact: [Y users/services]. Currently investigating. Next update in 10 minutes.' 
+  Then I'd escalate based on what I'm seeing. 
+  If it's a Kubernetes cluster issue, I'm paging the platform team. 
+  If it's an identity/auth failure, I'm pulling in the IAM team. 
   In Azure environments I've worked in, this could mean escalating to the networking or AAD team depending on the error."
 
   Minutes 10–15: Attempt Generic Mitigation, Not Root Cause
@@ -32,8 +33,8 @@
 
 2. What security measures you have taken for infrastructure provisioning like to control drift?
 
-   a) Statefile stored in Azure Blob Storage, provides native state locking               preventing conflicting changes.
-   b) All terraform changes go through GitHub Actions with mandatory PR check at          terraform plan- direct CLI apply on prod is blocked via Azure RBAC (only the        pipeline service principal has contributor access).
+   a) Statefile stored in Azure Blob Storage, provides native state locking preventing conflicting changes.
+   b) All terraform changes go through GitHub Actions with mandatory PR check at terraform plan- direct CLI apply on prod is blocked via Azure RBAC (only the pipeline service principal has contributor access).
    c) Schedule drift detection pipeline
    ```bash
       schedule * */6 * * *
@@ -54,9 +55,9 @@
      "Allowed VM sku's"
      "Public IP restriction, VM should not be associated with public IP's"
 
-   e) Even after the resources are deployed, OS configuration can drift. This             can be handled by Azure machine configuration service. We will define the           desired OS state in azure machine configuration file.
-      Azure automation pulls this config onto every registered VM every 15-30             min. if someone manually uninstalls IIS or modifies the config file, AMC            remediates it on the next pull cycle.
-   f) GitOps with ArgoCD on AKS for kubernetes drift. ArgoCD deployed on AKS              monitors your GitHub repos as the source of truth. With auto-sync enabled,          every 3 minutes, argocd compares live AKS cluster state. If someone runs            kubectl apply manually or edits anything directly, ArgoCD reconciles back to        Git state automatically.
+   e) Even after the resources are deployed, OS configuration can drift. This can be handled by Azure machine configuration service. We will define the desired OS state in azure machine configuration file.
+      Azure automation pulls this config onto every registered VM every 15-30 min. if someone manually uninstalls IIS or modifies the config file, AMC remediates it on the next pull cycle.
+   f) GitOps with ArgoCD on AKS for kubernetes drift. ArgoCD deployed on AKS monitors your GitHub repos as the source of truth. With auto-sync enabled, every 3 minutes, argocd compares live AKS cluster state. If someone runs kubectl apply manually or edits anything directly, ArgoCD reconciles back to Git state automatically.
    ```yaml
     # ArgoCD Application manifest
     apiVersion: argoproj.io/v1alpha1
@@ -79,12 +80,12 @@
 
 g) Azure Monitor + Activity Log Alerts for Rogue Changes
 
-  - **Azure Activity Log** records every single change made to any Azure resource —     who did it, when, from where
+  - **Azure Activity Log** records every single change made to any Azure resource — who did it, when, from where
   - Set up **Azure Monitor Alert Rules** on the Activity Log:
-  - *"Alert me if any resource is modified outside of the pipeline service              principal"*
+  - *"Alert me if any resource is modified outside of the pipeline service principal"*
   - *"Alert if any NSG rule is added manually via portal"*
   - Alerts sent to **Microsoft Teams channel or email** via Action Groups
-  - Integrate with **Azure Sentinel (Microsoft Defender for Cloud)** for security-      level drift monitoring
+  - Integrate with **Azure Sentinel (Microsoft Defender for Cloud)** for security- level drift monitoring
 
 h) Enforce "No Manual Changes" via Azure RBAC
 
@@ -115,8 +116,8 @@ Drift Report → Teams Alert + ADO Work Item
 "On Azure, drift protection is a layered approach. At the provisioning layer we use Terraform with Azure Blob backend for state locking. At the compliance layer, Azure Policy continuously evaluates and auto-remediates resource drift. At the OS layer, Azure Automation DSC enforces desired state on every VM. For Kubernetes on AKS, ArgoCD handles GitOps reconciliation. And organizationally, we enforce immutability through RBAC — only the pipeline service principal can modify production, so manual changes are architecturally impossible."
 
 
-3. What monitoring tools you have used, how do you implemented alerting?
-## How to Open Your Answer
+## 3. What monitoring tools you have used, how do you implemented alerting?
+### How to Open Your Answer
 > *"Our monitoring strategy was layered — we used **Prometheus + Grafana** for Kubernetes-level and application-level observability, and **Azure Monitor** for infrastructure-level and platform-level monitoring across VMs, VMSS, and managed databases. Alerting was not just email notifications — we built a full alerting pipeline with severity classification, routing, and auto-remediation."*
 ---
 
@@ -414,3 +415,5 @@ Grafana ← Prometheus + Azure Monitor (single pane of glass)
 
 > *"Our monitoring was a two-layer system. Prometheus with Alertmanager handled all Kubernetes and application-level observability — with PromQL-based alert rules, severity-based routing, and Alertmanager grouping to prevent alert fatigue. Azure Monitor with Log Analytics handled infrastructure and platform monitoring — using KQL-based scheduled query alerts for VMs, VMSS, SQL, and Cosmos DB. Everything was visualized in Grafana as a single pane of glass. Alerts were classified by severity and routed to PagerDuty, Teams, or Slack depending on urgency — and every alert had a runbook attached so on-call response was fast and consistent."*
 
+
+## 4. How do you handle documentation in your organization? which automation tool did you use for it? 
