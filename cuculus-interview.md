@@ -417,3 +417,38 @@ Grafana ← Prometheus + Azure Monitor (single pane of glass)
 
 
 ## 4. How do you handle documentation in your organization? which automation tool did you use for it? 
+One of the common challenges in distributed microservices-based systems is documentation drift — where API contracts, internal service logic, and deployment architecture evolve rapidly but documentation fails to keep pace.
+I worked on integrating documentation automation directly into the CI workflow of a Python-based application to ensure documentation remains consistent with implementation.
+Here’s what we implemented:
+🔹 Code-Level Documentation
+Used pydoc-markdown to automatically extract internal service logic from Python Flask-based microservices and generate application-level documentation.
+🔹 API Contract Documentation
+Integrated Swagger within Flask routes to dynamically expose API endpoints, request-response schema, and method definitions without manual intervention.
+🔹 Deployment Architecture Documentation
+Used Diagrams-as-Code to generate runtime deployment topology diagrams representing containerized chatbot services, MongoDB stateful components, and Kubernetes-based deployment assumptions.
+🔹 CI Integration using GitHub Actions
+All documentation generation scripts were embedded into a GitHub Actions workflow, which runs on every commit and regenerates:
+Code documentation
+API contract documentation
+Deployment architecture diagrams
+To ensure efficient updates, conditional commit logic using git status --porcelain was implemented to detect newly generated documentation artifacts and push changes back to the repository only when updates are present.
+This approach treats documentation as a CI-generated artifact, ensuring it remains version-controlled and aligned with system implementation — eliminating the need for manually maintained wiki pages.
+
+
+## 5. How do you deal with crashLoopBackOff, Image Pull off situaution as an devOps expert?
+For CrashLoopBackOff issue
+1) Check kubectl describe pod to identify Exit code, OOMKilled, Failed liveness probe, Back-off restarting failed container.
+2) Check application logs by kubectl logs <pod_name>, this will give common findings like Missing environment variable,  DB connection timeout, Invalid config mount, port binding failure, Dependency not reachable
+3) Checking probes. check if liveness/readiness probes are too aggressive. if application startup time> probe delay, probe fails-->container killed--> crashLoopBackOff cycle.
+4) If there is resource constraints like OOMKilled by checkig kubectl top pod <pod_name>, increase limits accordingly.
+   
+Handling ImagePullBackOff issue
+1) check pull error reason by kubectl describe pod <pod_name>. case 1 private registry authentication failure (pull access denied), check imagePullSecrtes exists in deployment manifest.
+2) Incorrect image tag, verify image exists in ACR
+3) Might me Node network issue, sometimes node can't reach registry. Then, SSH into node and run docker pull <image> to see it failing. If fails NSG blocking outbound, DNS resolution failure, Registry endpoint not reachable.
+4) CHeck Node pressure by kubectl describe node <node_name>. Image pull ails due to insufficient storage.
+
+
+ 
+
+
