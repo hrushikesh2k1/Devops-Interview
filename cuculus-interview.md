@@ -443,12 +443,12 @@ For CrashLoopBackOff issue
 4) If there is resource constraints like OOMKilled by checkig kubectl top pod <pod_name>, increase limits accordingly.
    
 Handling ImagePullBackOff issue
-1) check pull error reason by kubectl describe pod <pod_name>. case 1 private registry authentication failure (pull access denied), check imagePullSecrtes exists in deployment manifest.
+1) check pull error reason by kubectl describe pod <pod_name>. case 1 private registry authentication failure (pull access denied), check imagePullSecrtes exists in deployment manifest. Exit codes fall into two categories: applications errors (1-127) and system signal termination (128+).
 2) Incorrect image tag, verify image exists in ACR
 3) Might me Node network issue, sometimes node can't reach registry. Then, SSH into node and run docker pull <image> to see it failing. If fails NSG blocking outbound, DNS resolution failure, Registry endpoint not reachable.
 4) CHeck Node pressure by kubectl describe node <node_name>. Image pull ails due to insufficient storage.
 
-
+## 6. How much AI you use in your day to day activities?
  
 
 
